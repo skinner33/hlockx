@@ -103,7 +103,8 @@ eventLoop dpy pw =
 	allocaXEvent $ \e -> eventLoop' dpy pw e ""
 
 eventLoop' :: Display -> String -> XEventPtr -> String -> IO ()
-eventLoop' dpy pw e input = do
+eventLoop' dpy pw e inp = do
+	let input = limitInput inp
 	nextEvent dpy e
 	et <- get_EventType e
 	if et == keyPress then do
@@ -112,6 +113,12 @@ eventLoop' dpy pw e input = do
 			Just a -> eventLoop' dpy pw e a
 			Nothing -> return ()
 	 else eventLoop' dpy pw e input
+
+-- limit length of input
+limitInput :: String -> String
+limitInput input
+	| length input == 255 = tail input
+	| otherwise = input
 
 main :: IO ()
 main = do
