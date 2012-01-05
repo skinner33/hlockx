@@ -1,0 +1,5 @@
+This is a rewrite of lockx [0] as i experienced some segfaults with it and
+fixing those bugs didn't seem feasible
+
+
+[0]: http://bugflux.org/dev/lockx/
