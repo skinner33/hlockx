@@ -5,6 +5,8 @@ module DPMS
     , dPMSDisable
     , dPMSForceLevel
     , dPMSInfo
+    , dPMSGetTimeouts
+    , dPMSSetTimeouts
 	, dPMSModeOn
 	, dPMSModeStandby
 	, dPMSModeSuspend
@@ -41,4 +43,9 @@ foreign import ccall unsafe "X11/extensions/dpms.h DPMSForceLevel"
 foreign import ccall unsafe "X11/extensions/dpms.h DPMSInfo"
   dPMSInfo :: Display -> Ptr CARD16 -> Ptr Bool -> IO Status
 
+foreign import ccall unsafe "X11/extensions/dpms.h DPMSGetTimeouts"
+  dPMSGetTimeouts :: Display -> Ptr CARD16 -> Ptr CARD16 -> Ptr CARD16 -> IO Bool
+
+foreign import ccall unsafe "X11/extensions/dpms.h DPMSSetTimeouts"
+  dPMSSetTimeouts :: Display -> CARD16 -> CARD16 -> CARD16 -> IO Status
 

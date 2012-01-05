@@ -1,4 +1,4 @@
 * remove cursor
-* enable dpms
 * make it possible to behave like slock
 * remove unsafePerformIO
+* quickcheck

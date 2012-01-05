@@ -103,8 +103,7 @@ eventLoop dpy pw =
 	allocaXEvent $ \e -> eventLoop' dpy pw e ""
 
 eventLoop' :: Display -> String -> XEventPtr -> String -> IO ()
-eventLoop' dpy pw e inp = do
-	input <- checkInput dpy inp
+eventLoop' dpy pw e input = do
 	nextEvent dpy e
 	et <- get_EventType e
 	if et == keyPress then do
@@ -113,13 +112,6 @@ eventLoop' dpy pw e inp = do
 			Just a -> eventLoop' dpy pw e a
 			Nothing -> return ()
 	 else eventLoop' dpy pw e input
-
-checkInput :: Display -> String -> IO String
-checkInput dpy input =
-	if input == "" then do
-		_ <- dPMSForceLevel dpy dPMSModeOff
-		return ""
-	 else return input
 
 main :: IO ()
 main = do
@@ -143,20 +135,29 @@ main = do
 		exitFailure
 
 	-- check if DPMS was enabled before enabling it
-	wasEnabled <- alloca $ \dpmsWasActive ->
+	(standby, suspend, off, wasEnabled) <- alloca $ \pOff ->
+		alloca $ \pSuspend ->
+		alloca $ \pStandby ->
+		alloca $ \dpmsWasActive ->
 		alloca $ \dpmsPowerLevel -> do
 			_ <- dPMSInfo dpy dpmsPowerLevel dpmsWasActive
-			oldStatus <- peek dpmsWasActive
-			return oldStatus
+			_ <- dPMSGetTimeouts dpy pStandby pSuspend pOff
+			oldStandby <- peek pStandby
+			oldSuspend <- peek pSuspend
+			oldOff     <- peek pOff
+			oldStatus  <- peek dpmsWasActive
+			return (oldStandby, oldSuspend, oldOff, oldStatus)
 
 	_ <- dPMSEnable dpy
+	_ <- dPMSSetTimeouts dpy 0 0 2
 
 	_ <- mapRaised dpy win
 
 	sync dpy True
 	eventLoop dpy pw
 
-	-- disable DPMS if it was disabled before
+	-- restore previous DPMS settings
+	_ <- dPMSSetTimeouts dpy standby suspend off
 	unless wasEnabled $ do _ <- dPMSDisable dpy; return ()
 
 	ungrabPointer dpy currentTime
