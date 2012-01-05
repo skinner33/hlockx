@@ -5,10 +5,17 @@ module Main (
 
 import Data.Bits ((.|.))
 
+import Control.Monad (when)
+
 import Graphics.X11.Xlib
 import Graphics.X11.Xlib.Extras
 import Graphics.X11.Xlib.Types
 
+import Foreign.Marshal.Alloc
+
+import System.IO
+import System.Environment
+import System.Exit
 import System.Posix.User
 import System.Unix.Crypt
 import System.Unix.Shadow
@@ -36,15 +43,32 @@ makeWin dpy scrNr rw = do
 			             visual attrmask attributes
 
 
+cleanup :: Display -> Window -> IO ()
+cleanup dpy win = do
+	destroyWindow dpy win
+	closeDisplay dpy
+
 
 main :: IO ()
 main = do
+	progName <- getProgName
 	dpy <- openDisplay ""
 	let srcNr = defaultScreen dpy
 	root <- rootWindow dpy srcNr
 	win <- makeWin dpy srcNr root
 	mapRaised dpy win
-	ret <- grabPointer dpy win False (buttonPressMask .|. buttonReleaseMask .|. pointerMotionMask) grabModeAsync grabModeAsync none none currentTime
+
+	ret <- grabPointer dpy root False (buttonPressMask .|. buttonReleaseMask .|. pointerMotionMask) grabModeAsync grabModeAsync none none currentTime
+	when (ret /= grabSuccess) $ do
+		hPutStrLn stderr (progName ++ ": couldn't grap pointer")
+		cleanup dpy win
+		exitFailure
+
+	ret <- grabKeyboard dpy root True grabModeAsync grabModeAsync currentTime
+	when (ret /= grabSuccess) $ do
+		hPutStrLn stderr (progName ++ ": couldn't grap keyboard")
+		cleanup dpy win
+		exitFailure
 
 	pw <- getPasswordHash
 	input <- getLine
@@ -54,7 +78,6 @@ main = do
 	 else
 		putStrLn "No"
 
-	destroyWindow dpy win
-	closeDisplay dpy
+	cleanup dpy win
 
 
