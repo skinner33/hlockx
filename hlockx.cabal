@@ -28,12 +28,13 @@ source-repository head
 executable hlockx
     hs-source-dirs:     src
     main-is:            hlockx.hs
---    other-modules:
+    other-modules:      DPMS
 
     ghc-prof-options:   -prof -auto-all
 
     if true
        ghc-options: -Wall
+       extra-libraries: Xext
 
     build-depends:
       base,

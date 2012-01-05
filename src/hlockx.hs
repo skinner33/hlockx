@@ -3,15 +3,19 @@ module Main (
               main
             ) where
 
+import DPMS
+
 import Data.Bits ((.|.))
 import Data.Char (isControl)
 
-import Control.Monad (when)
+import Control.Monad (when, unless)
 
 import Graphics.X11.Types
 import Graphics.X11.Xlib
 import Graphics.X11.Xlib.Extras
 
+import Foreign.Marshal.Alloc
+import Foreign.Storable
 
 import System.IO
 import System.Environment
@@ -99,7 +103,8 @@ eventLoop dpy pw =
 	allocaXEvent $ \e -> eventLoop' dpy pw e ""
 
 eventLoop' :: Display -> String -> XEventPtr -> String -> IO ()
-eventLoop' dpy pw e input = do
+eventLoop' dpy pw e inp = do
+	input <- checkInput dpy inp
 	nextEvent dpy e
 	et <- get_EventType e
 	if et == keyPress then do
@@ -109,7 +114,12 @@ eventLoop' dpy pw e input = do
 			Nothing -> return ()
 	 else eventLoop' dpy pw e input
 
-
+checkInput :: Display -> String -> IO String
+checkInput dpy input =
+	if input == "" then do
+		_ <- dPMSForceLevel dpy dPMSModeOff
+		return ""
+	 else return input
 
 main :: IO ()
 main = do
@@ -119,7 +129,6 @@ main = do
 	let srcNr = defaultScreen dpy
 	root <- rootWindow dpy srcNr
 	win <- makeWin dpy srcNr root
-	_ <- mapRaised dpy win
 
 	retP <- grabPointer dpy root False (buttonPressMask .|. buttonReleaseMask .|. pointerMotionMask) grabModeAsync grabModeAsync none none currentTime
 	when (retP /= grabSuccess) $ do
@@ -133,8 +142,24 @@ main = do
 		cleanup dpy win
 		exitFailure
 
+	-- check if DPMS was enabled before enabling it
+	wasEnabled <- alloca $ \dpmsWasActive ->
+		alloca $ \dpmsPowerLevel -> do
+			_ <- dPMSInfo dpy dpmsPowerLevel dpmsWasActive
+			oldStatus <- peek dpmsWasActive
+			return oldStatus
+
+	_ <- dPMSEnable dpy
+
+	_ <- mapRaised dpy win
+
 	sync dpy True
 	eventLoop dpy pw
+
+	-- disable DPMS if it was disabled before
+	unless wasEnabled $ do _ <- dPMSDisable dpy; return ()
+
+	ungrabPointer dpy currentTime
 
 	cleanup dpy win
 
