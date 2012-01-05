@@ -1,5 +1,7 @@
 This is a rewrite of lockx [0] as i experienced some segfaults with it and
-fixing those bugs didn't seem feasible
+fixing those bugs didn't seem feasible.
+
+hlockx must be owned by root and have setuid-bit set.
 
 
 [0]: http://bugflux.org/dev/lockx/

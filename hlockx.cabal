@@ -1,0 +1,42 @@
+name:               hlockx
+version:            0.0.1
+homepage:           https://github.com/skinner33/hlockx
+bug-reports:        https://github.com/skinner33/hlockx/issues
+synopsis:           A simple X locker
+description: 	    hlockx is a rewrite of lockx, which is heavily based on
+                    slock.
+
+                    It locks the screen and unlocks it after the password is
+                    detected in the input.
+                    There can be an arbitrary amount of characters before
+                    the password.
+category:           System
+license:            MIT
+license-file:       LICENSE
+author:             Martin Perner
+maintainer:         Martin Perner <martin@perner.cc>
+cabal-version:      >= 1.6
+build-type:         Simple
+
+extra-source-files: README
+
+source-repository head
+  type:      git
+  location:  git://github.com/skinner33/hlockx.git
+  branch:    master
+
+executable hlockx
+    hs-source-dirs:     src
+    main-is:            hlockx.hs
+--    other-modules:
+
+    ghc-prof-options:   -prof -auto-all
+
+    if true
+       ghc-options: -Wall
+
+    build-depends:
+      base,
+      unix,
+      Unixutils >= 1.29,
+      X11 == 1.5.*

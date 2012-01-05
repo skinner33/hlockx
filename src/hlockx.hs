@@ -10,11 +10,8 @@ import Control.Monad (when)
 
 import Graphics.X11.Types
 import Graphics.X11.Xlib
-import Graphics.X11.Xlib.Event
 import Graphics.X11.Xlib.Extras
-import Graphics.X11.Xlib.Types
 
-import Foreign.Marshal.Alloc
 
 import System.IO
 import System.Environment
@@ -54,7 +51,7 @@ cleanup dpy win = do
 	closeDisplay dpy
 
 processInput :: String -> String -> Maybe KeySym -> String -> Maybe String
-processInput pw input Nothing _ = Just input
+processInput _ input Nothing _ = Just input
 processInput pw input (Just ksym) str
 	| ksym `elem` [xK_Return, xK_KP_Enter, xK_Escape] = Just ""
 	| ksym == xK_BackSpace = Just $ safeInit input
@@ -70,14 +67,14 @@ processInput pw input (Just ksym) str
 checkPasswords :: String -> String -> Maybe String
 checkPasswords pw str = checkPasswords' pw (safeInit str) (safeLast str)
 
--- Checks if the password can be build of the remaining string
--- so that only the tail of the remaing string appended in the
+-- Checks if the password can be build of the pool string
+-- so that only the tail of the pool string appended in the
 -- front of the string to check
 checkPasswords' :: String -> String -> String -> Maybe String
-checkPasswords' pw rem str
+checkPasswords' pw pool str
 	| checkPassword pw str = Nothing
-	| rem == "" = Just str
-	| otherwise = checkPasswords' pw (safeInit rem) (safeLast rem ++ str)
+	| pool == "" = Just str
+	| otherwise = checkPasswords' pw (safeInit pool) (safeLast pool ++ str)
 
 checkPassword :: String -> String -> Bool
 checkPassword pw str
@@ -87,7 +84,7 @@ checkPassword pw str
 
 safeNotControl :: String -> Bool
 safeNotControl "" = False
-safeNotControl (x:xs) = not $ isControl x
+safeNotControl (x:_) = not $ isControl x
 
 safeInit :: String -> String
 safeInit "" = ""
@@ -122,16 +119,16 @@ main = do
 	let srcNr = defaultScreen dpy
 	root <- rootWindow dpy srcNr
 	win <- makeWin dpy srcNr root
-	mapRaised dpy win
+	_ <- mapRaised dpy win
 
-	ret <- grabPointer dpy root False (buttonPressMask .|. buttonReleaseMask .|. pointerMotionMask) grabModeAsync grabModeAsync none none currentTime
-	when (ret /= grabSuccess) $ do
+	retP <- grabPointer dpy root False (buttonPressMask .|. buttonReleaseMask .|. pointerMotionMask) grabModeAsync grabModeAsync none none currentTime
+	when (retP /= grabSuccess) $ do
 		hPutStrLn stderr (progName ++ ": couldn't grap pointer")
 		cleanup dpy win
 		exitFailure
 
-	ret <- grabKeyboard dpy root True grabModeAsync grabModeAsync currentTime
-	when (ret /= grabSuccess) $ do
+	retK <- grabKeyboard dpy root True grabModeAsync grabModeAsync currentTime
+	when (retK /= grabSuccess) $ do
 		hPutStrLn stderr (progName ++ ": couldn't grap keyboard")
 		cleanup dpy win
 		exitFailure
