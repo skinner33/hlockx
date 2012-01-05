@@ -38,7 +38,7 @@ makeWin dpy scrNr rw = do
 	    bp = blackPixel dpy scrNr
 	    visual   = defaultVisualOfScreen scr
 	    depth    = defaultDepthOfScreen scr
-	    attrmask = (cWOverrideRedirect .|.  cWBackPixel)
+	    attrmask = cWOverrideRedirect .|.  cWBackPixel
 	    w = fromIntegral $ displayWidth dpy scrNr
 	    h = fromIntegral $ displayHeight dpy scrNr
 	allocaSetWindowAttributes $
@@ -60,10 +60,14 @@ processInput pw input (Just ksym) str
 	| ksym `elem` [xK_Return, xK_KP_Enter, xK_Escape] = Just ""
 	| ksym == xK_BackSpace = Just $ safeInit input
 	| xK_KP_0 <= ksym || ksym <= xK_KP_9 = checkPasswords pw $ input ++ str
-	| isFunctionKey ksym || isKeypadKey ksym || isMiscFunctionKey ksym = Just input
-	| isPFKey ksym || isPrivateKeypadKey ksym = Just input
+	| or $ mapf [isFunctionKey, isKeypadKey, isMiscFunctionKey, isPFKey,
+	  isPrivateKeypadKey] ksym = Just input
 	| safeNotControl str = checkPasswords pw $ input ++ str
 	| otherwise = Just input
+
+mapf :: [a -> b] -> a -> [b]
+mapf [] _     = []
+mapf (f:fs) x = f x : mapf fs x
 
 -- Takes a password and a string and checks if
 -- the password is equal to a substring of the string
