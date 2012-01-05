@@ -120,14 +120,25 @@ limitInput input
 	| length input == 255 = tail input
 	| otherwise = input
 
+createCursor :: Display -> ScreenNumber -> Window -> IO ()
+createCursor dpy scrNr win = do
+	pmap <- createPixmap dpy win 1 1 1
+	(black, _) <- allocNamedColor dpy (defaultColormap dpy scrNr) "black"
+	invCursor <- createPixmapCursor dpy pmap pmap black black 1 1
+	defineCursor dpy win invCursor
+	freeCursor dpy invCursor
+	freePixmap dpy pmap
+
 main :: IO ()
 main = do
 	progName <- getProgName
 	pw <- getPasswordHash
 	dpy <- openDisplay ""
-	let srcNr = defaultScreen dpy
-	root <- rootWindow dpy srcNr
-	win <- makeWin dpy srcNr root
+	let scrNr = defaultScreen dpy
+	root <- rootWindow dpy scrNr
+	win <- makeWin dpy scrNr root
+
+	createCursor dpy scrNr win
 
 	retP <- grabPointer dpy root False (buttonPressMask .|. buttonReleaseMask .|. pointerMotionMask) grabModeAsync grabModeAsync none none currentTime
 	when (retP /= grabSuccess) $ do
