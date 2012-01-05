@@ -25,6 +25,10 @@ source-repository head
   location:  git://github.com/skinner33/hlockx.git
   branch:    master
 
+flag like_slock
+  description: behave like slock. Thus only check the password after enter was pressed.
+  default: False
+
 executable hlockx
     hs-source-dirs:     src
     main-is:            hlockx.hs
@@ -35,6 +39,9 @@ executable hlockx
     if true
        ghc-options: -Wall
        extra-libraries: Xext
+
+    if flag(like_slock)
+       cpp-options: -DBEHAVIOUR_SLOCK
 
     build-depends:
       base,

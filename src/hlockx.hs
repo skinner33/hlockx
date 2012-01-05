@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 
 module Main (
               main
@@ -54,6 +55,8 @@ cleanup dpy win = do
 	destroyWindow dpy win
 	closeDisplay dpy
 
+#ifndef BEHAVIOUR_SLOCK
+
 processInput :: String -> String -> Maybe KeySym -> String -> Maybe String
 processInput _ input Nothing _ = Just input
 processInput pw input (Just ksym) str
@@ -64,10 +67,6 @@ processInput pw input (Just ksym) str
 	  isPrivateKeypadKey] ksym = Just input
 	| safeNotControl str = checkPasswords pw $ input ++ str
 	| otherwise = Just input
-
-mapf :: [a -> b] -> a -> [b]
-mapf [] _     = []
-mapf (f:fs) x = f x : mapf fs x
 
 -- Takes a password and a string and checks if
 -- the password is equal to a substring of the string
@@ -84,6 +83,35 @@ checkPasswords' pw pool str
 	| pool == "" = Just str
 	| otherwise = checkPasswords' pw (safeInit pool) (safeLast pool ++ str)
 
+safeLast :: String -> String
+safeLast "" = ""
+safeLast str = [last str]
+
+#else
+
+processInput :: String -> String -> Maybe KeySym -> String -> Maybe String
+processInput _ input Nothing _ = Just input
+processInput pw input (Just ksym) str
+	| ksym == xK_Escape = Just ""
+	| ksym `elem` [xK_Return, xK_KP_Enter] = checkSinglePassword pw input
+	| ksym == xK_BackSpace = Just $ safeInit input
+	| xK_KP_0 <= ksym || ksym <= xK_KP_9 = Just $ input ++ str
+	| or $ mapf [isFunctionKey, isKeypadKey, isMiscFunctionKey, isPFKey,
+	  isPrivateKeypadKey] ksym = Just input
+	| safeNotControl str = Just $ input ++ str
+	| otherwise = Just input
+
+checkSinglePassword :: String -> String -> Maybe String
+checkSinglePassword pw input
+	| checkPassword pw input = Nothing
+	| otherwise = Just ""
+
+#endif
+
+mapf :: [a -> b] -> a -> [b]
+mapf [] _     = []
+mapf (f:fs) x = f x : mapf fs x
+
 checkPassword :: String -> String -> Bool
 checkPassword pw str
 	| encrypt == pw = True
@@ -98,9 +126,6 @@ safeInit :: String -> String
 safeInit "" = ""
 safeInit str = init str
 
-safeLast :: String -> String
-safeLast "" = ""
-safeLast str = [last str]
 
 eventLoop :: Display -> String -> IO ()
 eventLoop dpy pw =
