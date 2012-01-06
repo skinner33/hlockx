@@ -21,6 +21,7 @@ import Foreign.Storable
 import System.IO
 import System.Environment
 import System.Exit
+import System.Posix.Unistd
 import System.Posix.User
 import System.Unix.Crypt
 import System.Unix.Shadow
@@ -158,6 +159,23 @@ createCursor dpy scrNr win = do
 	freeCursor dpy invCursor
 	freePixmap dpy pmap
 
+
+tryGrab :: String -> String -> Display -> Window -> IO (GrabStatus) -> IO ()
+tryGrab x y dpy win func = do
+	tryGrab' x y dpy win func 1000
+
+tryGrab' :: String -> String -> Display -> Window -> IO (GrabStatus) -> Integer -> IO ()
+tryGrab' progName typ dpy win _ 0 = do
+		hPutStrLn stderr (progName ++ ": couldn't grab " ++ typ)
+		cleanup dpy win
+		exitFailure
+tryGrab' x y dpy win func rty = do
+	retK <- func
+	when (retK /= grabSuccess) $ do
+		usleep 1000
+		tryGrab' x y dpy win func (rty - 1)
+
+
 main :: IO ()
 main = do
 	progName <- getProgName
@@ -169,17 +187,13 @@ main = do
 
 	createCursor dpy scrNr win
 
-	retP <- grabPointer dpy root False (buttonPressMask .|. buttonReleaseMask .|. pointerMotionMask) grabModeAsync grabModeAsync none none currentTime
-	when (retP /= grabSuccess) $ do
-		hPutStrLn stderr (progName ++ ": couldn't grap pointer")
-		cleanup dpy win
-		exitFailure
+	tryGrab progName "pointer" dpy win (grabPointer dpy root False
+		(buttonPressMask .|. buttonReleaseMask .|. pointerMotionMask)
+		grabModeAsync grabModeAsync none none currentTime)
 
-	retK <- grabKeyboard dpy root True grabModeAsync grabModeAsync currentTime
-	when (retK /= grabSuccess) $ do
-		hPutStrLn stderr (progName ++ ": couldn't grap keyboard")
-		cleanup dpy win
-		exitFailure
+	tryGrab progName "keyboard" dpy win (grabKeyboard dpy root True grabModeAsync grabModeAsync currentTime)
+
+
 
 	-- check if DPMS was enabled before enabling it
 	(standby, suspend, off, wasEnabled) <- alloca $ \pOff ->
