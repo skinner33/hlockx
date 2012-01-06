@@ -5,6 +5,9 @@ module Main ( main
 
 import Hlockx
 
+import Paths_hlockx (version)
+import Data.Version (showVersion)
+
 import System.Environment
 import System.Exit
 import System.IO
@@ -24,7 +27,8 @@ options =
    [ Option "v" ["version"]
         (NoArg
             (\_ -> do
-                hPutStrLn stderr "Version 0.01"
+                prg <- getProgName
+                hPutStrLn stderr (prg ++ " version " ++ showVersion version)
                 exitWith ExitSuccess))
         "Print version"
     , Option "h" ["help"]
