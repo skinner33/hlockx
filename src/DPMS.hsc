@@ -7,10 +7,11 @@ module DPMS
     , dPMSInfo
     , dPMSGetTimeouts
     , dPMSSetTimeouts
-	, dPMSModeOn
-	, dPMSModeStandby
-	, dPMSModeSuspend
-	, dPMSModeOff
+    , getCurrentDPMSStatus
+    , dPMSModeOn
+    , dPMSModeStandby
+    , dPMSModeSuspend
+    , dPMSModeOff
     ) where
 
 import Foreign
@@ -48,4 +49,19 @@ foreign import ccall unsafe "X11/extensions/dpms.h DPMSGetTimeouts"
 
 foreign import ccall unsafe "X11/extensions/dpms.h DPMSSetTimeouts"
   dPMSSetTimeouts :: Display -> CARD16 -> CARD16 -> CARD16 -> IO Status
+
+getCurrentDPMSStatus :: Display -> IO (CARD16, CARD16, CARD16, Bool)
+getCurrentDPMSStatus dpy =
+	alloca $ \pOff ->
+	alloca $ \pSuspend ->
+	alloca $ \pStandby ->
+	alloca $ \dpmsWasActive ->
+	alloca $ \dpmsPowerLevel -> do
+		_ <- dPMSInfo dpy dpmsPowerLevel dpmsWasActive
+		_ <- dPMSGetTimeouts dpy pStandby pSuspend pOff
+		oldStandby <- peek pStandby
+		oldSuspend <- peek pSuspend
+		oldOff     <- peek pOff
+		oldStatus  <- peek dpmsWasActive
+		return (oldStandby, oldSuspend, oldOff, oldStatus)
 

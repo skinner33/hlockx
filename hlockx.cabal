@@ -32,7 +32,7 @@ flag def_slock
 executable hlockx
     hs-source-dirs:     src
     main-is:            Main.hs
-    other-modules:      DPMS Hlockx
+    other-modules:      DPMS Hlockx PwUtils Utils XUtils
 
     ghc-prof-options:   -prof -auto-all
 
