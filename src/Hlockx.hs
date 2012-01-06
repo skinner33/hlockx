@@ -36,6 +36,8 @@ hlockx slock timeout = do
 	(standby, suspend, off, wasEnabled) <- getCurrentDPMSStatus dpy
 	_ <- dPMSEnable dpy
 	_ <- dPMSSetTimeouts dpy 0 0 timeout
+	_ <- dPMSForceLevel dpy dPMSModeOff
+
 
 	if slock then
 		eventLoop dpy pw processInputSLock
