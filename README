@@ -1,7 +1,7 @@
 This is a rewrite of lockx [0] as i experienced some segfaults with it and
 fixing those bugs didn't seem feasible.
 
-hlockx must be owned by root and have sticky-bit set.
+hlockx must be owned by root and have setuid-bit set.
 
 Configure with --flags="like_slock" to make it behave like slock.
 
