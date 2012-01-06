@@ -154,11 +154,10 @@ createCursor dpy scrNr win = do
 	freePixmap dpy pmap
 
 
-tryGrab :: String -> String -> Display -> Window -> IO (GrabStatus) -> IO ()
-tryGrab x y dpy win func = do
-	tryGrab' x y dpy win func 1000
+tryGrab :: String -> String -> Display -> Window -> IO GrabStatus -> IO ()
+tryGrab x y dpy win func = tryGrab' x y dpy win func 1000
 
-tryGrab' :: String -> String -> Display -> Window -> IO (GrabStatus) -> Integer -> IO ()
+tryGrab' :: String -> String -> Display -> Window -> IO GrabStatus -> Integer -> IO ()
 tryGrab' progName typ dpy win _ 0 = do
 		hPutStrLn stderr (progName ++ ": couldn't grab " ++ typ)
 		cleanup dpy win
