@@ -8,19 +8,24 @@ import Hlockx
 import Paths_hlockx (version)
 import Data.Version (showVersion)
 
+import Foreign.C.Types (CUInt)
+
 import System.Environment
 import System.Exit
 import System.IO
 import System.Console.GetOpt
 
-data Options = Options { optSLock :: Bool }
+data Options = Options { optSLock   :: Bool
+                       , optTimeout :: CUInt  }
 
 startOptions :: Options
 #ifdef DEF_SLOCK
-startOptions = Options  { optSLock = True }
+startOptions = Options  { optSLock = True
 #else
-startOptions = Options  { optSLock = False }
+startOptions = Options  { optSLock = False
 #endif
+                        , optTimeout = 2
+                        }
 
 options :: [ OptDescr (Options -> IO Options) ]
 options =
@@ -38,6 +43,10 @@ options =
                 hPutStrLn stderr (usageInfo prg options)
                 exitWith ExitSuccess))
         "Show help"
+    , Option "t" ["timeout"]
+        (ReqArg
+            (\arg opt -> return opt { optTimeout = read arg }) "Seconds")
+        "Set DPMS timeout (default: 2s)"
     , Option "s" ["slock"]
         (NoArg
             (\opt -> return opt { optSLock = True }))
@@ -62,4 +71,4 @@ main = do
 	-- Parse options, getting a list of option actions
 	let (actions, _, _) = getOpt RequireOrder options args
 	opts <- foldl (>>=) (return startOptions) actions
-	hlockx (optSLock opts)
+	hlockx (optSLock opts) (optTimeout opts)

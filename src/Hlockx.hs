@@ -8,6 +8,8 @@ import XUtils
 
 import Control.Monad (unless)
 
+import Foreign.C.Types (CUInt)
+
 import Graphics.X11.Types
 import Graphics.X11.Xlib
 import Graphics.X11.Xlib.Extras
@@ -15,8 +17,8 @@ import Graphics.X11.Xlib.Extras
 import System.Environment
 
 
-hlockx :: Bool -> IO ()
-hlockx slock = do
+hlockx :: Bool -> CUInt -> IO ()
+hlockx slock timeout = do
 	progName <- getProgName
 
 	pw <- getPasswordHash
@@ -33,7 +35,7 @@ hlockx slock = do
 	-- check if DPMS was enabled before enabling it
 	(standby, suspend, off, wasEnabled) <- getCurrentDPMSStatus dpy
 	_ <- dPMSEnable dpy
-	_ <- dPMSSetTimeouts dpy 0 0 2
+	_ <- dPMSSetTimeouts dpy 0 0 timeout
 
 	if slock then
 		eventLoop dpy pw processInputSLock
