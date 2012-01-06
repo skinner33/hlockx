@@ -1,7 +1,6 @@
-{-# LANGUAGE CPP #-}
 
-module Main (
-              main
+module Hlockx (
+              hlockx
             ) where
 
 import DPMS
@@ -56,11 +55,9 @@ cleanup dpy win = do
 	destroyWindow dpy win
 	closeDisplay dpy
 
-#ifndef BEHAVIOUR_SLOCK
-
-processInput :: String -> String -> Maybe KeySym -> String -> Maybe String
-processInput _ input Nothing _ = Just input
-processInput pw input (Just ksym) str
+processInputLockX :: String -> String -> Maybe KeySym -> String -> Maybe String
+processInputLockX _ input Nothing _ = Just input
+processInputLockX pw input (Just ksym) str
 	| ksym `elem` [xK_Return, xK_KP_Enter, xK_Escape] = Just ""
 	| ksym == xK_BackSpace = Just $ safeInit input
 	| xK_KP_0 <= ksym || ksym <= xK_KP_9 = checkPasswords pw $ input ++ str
@@ -88,11 +85,9 @@ safeLast :: String -> String
 safeLast "" = ""
 safeLast str = [last str]
 
-#else
-
-processInput :: String -> String -> Maybe KeySym -> String -> Maybe String
-processInput _ input Nothing _ = Just input
-processInput pw input (Just ksym) str
+processInputSLock :: String -> String -> Maybe KeySym -> String -> Maybe String
+processInputSLock _ input Nothing _ = Just input
+processInputSLock pw input (Just ksym) str
 	| ksym == xK_Escape = Just ""
 	| ksym `elem` [xK_Return, xK_KP_Enter] = checkSinglePassword pw input
 	| ksym == xK_BackSpace = Just $ safeInit input
@@ -106,8 +101,6 @@ checkSinglePassword :: String -> String -> Maybe String
 checkSinglePassword pw input
 	| checkPassword pw input = Nothing
 	| otherwise = Just ""
-
-#endif
 
 mapf :: [a -> b] -> a -> [b]
 mapf [] _     = []
@@ -128,21 +121,22 @@ safeInit "" = ""
 safeInit str = init str
 
 
-eventLoop :: Display -> String -> IO ()
-eventLoop dpy pw =
-	allocaXEvent $ \e -> eventLoop' dpy pw e ""
 
-eventLoop' :: Display -> String -> XEventPtr -> String -> IO ()
-eventLoop' dpy pw e inp = do
+eventLoop :: Display -> String -> (String -> String -> Maybe KeySym -> String -> Maybe String) -> IO ()
+eventLoop dpy pw process =
+	allocaXEvent $ \e -> eventLoop' dpy pw process e ""
+
+eventLoop' :: Display -> String -> (String -> String -> Maybe KeySym -> String -> Maybe String) -> XEventPtr -> String -> IO ()
+eventLoop' dpy pw process e inp = do
 	let input = limitInput inp
 	nextEvent dpy e
 	et <- get_EventType e
 	if et == keyPress then do
 		(ksym, str) <- lookupString $ asKeyEvent e
-		case processInput pw input ksym str of
-			Just a -> eventLoop' dpy pw e a
+		case process pw input ksym str of
+			Just a -> eventLoop' dpy pw process e a
 			Nothing -> return ()
-	 else eventLoop' dpy pw e input
+	 else eventLoop' dpy pw process e input
 
 -- limit length of input
 limitInput :: String -> String
@@ -176,8 +170,8 @@ tryGrab' x y dpy win func rty = do
 		tryGrab' x y dpy win func (rty - 1)
 
 
-main :: IO ()
-main = do
+hlockx :: Bool -> IO ()
+hlockx slock = do
 	progName <- getProgName
 	pw <- getPasswordHash
 	dpy <- openDisplay ""
@@ -215,7 +209,10 @@ main = do
 	_ <- mapRaised dpy win
 
 	sync dpy True
-	eventLoop dpy pw
+	if slock then
+		eventLoop dpy pw processInputSLock
+	 else
+		eventLoop dpy pw processInputLockX
 
 	-- restore previous DPMS settings
 	_ <- dPMSSetTimeouts dpy standby suspend off
