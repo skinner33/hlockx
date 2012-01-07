@@ -27,6 +27,7 @@ hlockx slock timeout = do
 	let scrNr = defaultScreen dpy
 	root <- rootWindow dpy scrNr
 	win <- makeWin dpy scrNr root
+	selectInput dpy win visibilityChangeMask
 	createCursor dpy scrNr win
 	grabInputs dpy root win progName
 	_ <- mapRaised dpy win
@@ -40,9 +41,9 @@ hlockx slock timeout = do
 
 
 	if slock then
-		eventLoop dpy pw processInputSLock
+		eventLoop dpy win pw processInputSLock
 	 else
-		eventLoop dpy pw processInputLockX
+		eventLoop dpy win pw processInputLockX
 
 	-- restore previous DPMS settings
 	_ <- dPMSSetTimeouts dpy standby suspend off
@@ -78,19 +79,29 @@ processInputSLock pw input (Just ksym) str
 	| safeNotControl str = Just $ input ++ str
 	| otherwise = Just input
 
-eventLoop :: Display -> String -> (String -> String -> Maybe KeySym -> String -> Maybe String) -> IO ()
-eventLoop dpy pw process =
-	allocaXEvent $ \e -> eventLoop' dpy pw process e ""
+eventLoop :: Display -> Window -> String -> (String -> String -> Maybe KeySym -> String -> Maybe String) -> IO ()
+eventLoop dpy win pw process =
+	allocaXEvent $ \e -> eventLoop' dpy win pw process e ""
 
-eventLoop' :: Display -> String -> (String -> String -> Maybe KeySym -> String -> Maybe String) -> XEventPtr -> String -> IO ()
-eventLoop' dpy pw process e inp = do
+eventLoop' :: Display -> Window -> String -> (String -> String -> Maybe KeySym -> String -> Maybe String) -> XEventPtr -> String -> IO ()
+eventLoop' dpy win pw process e inp = do
 	let input = limitInput inp
 	nextEvent dpy e
 	et <- get_EventType e
-	if et == keyPress then do
-		(ksym, str) <- lookupString $ asKeyEvent e
-		case process pw input ksym str of
-			Just a -> eventLoop' dpy pw process e a
-			Nothing -> return ()
-	 else eventLoop' dpy pw process e input
+	selectAction et input
+	where
+	selectAction et input
+		| et == visibilityNotify = do
+			vis <- get_VisibilityEvent e
+			if vis /= visibilityUnobscured then do
+				_ <- mapRaised dpy win
+				eventLoop' dpy win pw process e input
+			 else
+				eventLoop' dpy win pw process e input
+		| et == keyPress = do
+			(ksym, str) <- lookupString $ asKeyEvent e
+			case process pw input ksym str of
+				Just a -> eventLoop' dpy win pw process e a
+				Nothing -> return ()
+		| otherwise = eventLoop' dpy win pw process e input
 

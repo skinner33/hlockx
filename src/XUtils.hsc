@@ -1,12 +1,16 @@
+{-# LANGUAGE CPP, ForeignFunctionInterface #-}
+
 module XUtils ( cleanup
               , createCursor
+              , get_VisibilityEvent
               , grabInputs
               , makeWin
               ) where
 
-import Data.Bits ((.|.))
-
 import Control.Monad (when)
+
+import Foreign
+import Foreign.C.Types
 
 import Graphics.X11.Types
 import Graphics.X11.Xlib
@@ -71,3 +75,15 @@ tryGrab' x y dpy win func rty = do
 	when (retK /= grabSuccess) $ do
 		usleep 1000
 		tryGrab' x y dpy win func (rty - 1)
+
+#include "X11/Xlib.h"
+
+type XVisibilityEvent =	CInt -- state
+
+peekXVisibilityEvent :: Ptr XVisibilityEvent -> IO XVisibilityEvent
+peekXVisibilityEvent p = do
+        state <- #{peek XVisibilityEvent,state} p
+        return state
+
+get_VisibilityEvent :: XEventPtr -> IO XVisibilityEvent
+get_VisibilityEvent p = peekXVisibilityEvent (castPtr p)
