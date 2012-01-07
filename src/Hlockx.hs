@@ -6,7 +6,7 @@ import PwUtils
 import Utils
 import XUtils
 
-import Control.Monad (unless)
+import Control.Monad (unless, when)
 
 import Foreign.C.Types (CUInt)
 
@@ -93,11 +93,10 @@ eventLoop' dpy win pw process e inp = do
 	selectAction et input
 		| et == visibilityNotify = do
 			vis <- get_VisibilityEvent e
-			if vis /= visibilityUnobscured then do
+			when (vis /= visibilityUnobscured) $ do
 				_ <- mapRaised dpy win
-				eventLoop' dpy win pw process e input
-			 else
-				eventLoop' dpy win pw process e input
+				return ()
+			eventLoop' dpy win pw process e input
 		| et == keyPress = do
 			(ksym, str) <- lookupString $ asKeyEvent e
 			case process pw input ksym str of
