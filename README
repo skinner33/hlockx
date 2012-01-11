@@ -3,7 +3,11 @@ fixing those bugs didn't seem feasible.
 
 hlockx must be owned by root and have setuid-bit set.
 
-Configure with --flags="like_slock" to make it behave like slock.
+Configure with --flags="def_slock" to make it behave like slock per default.
+
+Configure with --flags="use_pam" to use PAM for the authentication. This makes
+it unnecessary to set the setuid-bit and having the executable owned by root.
+Although authentication with PAM is slow, so slock behaviour should be used.
 
 
 [0]: http://bugflux.org/dev/lockx/
