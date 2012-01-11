@@ -1,17 +1,38 @@
-module PwUtils ( checkPasswords
-               , checkSinglePassword
+{-# LANGUAGE CPP #-}
+
+module PwUtils ( generateOnePassword
+               , generateMulPasswords
+#ifndef USE_PAM
                , getPasswordHash
+               , checkHash
+#else
+               , checkPAM
+#endif
+               , auther
                ) where
 
 import Utils
 
 import System.IO.Unsafe
 
+#ifdef USE_PAM
+import System.Posix.PAM
+#else
+
 import System.Posix.User
 
 import System.Unix.Crypt
 import System.Unix.Shadow
+#endif
 
+
+auther :: String -> (String -> [String]) -> (String -> String -> Bool) -> Maybe String -> Bool
+auther _ _ _ Nothing = False
+auther token generator checker (Just password) =
+	any check (generator password)
+	where check = checker token
+
+#ifndef USE_PAM
 
 getPasswordHash :: IO String
 getPasswordHash = do
@@ -19,28 +40,28 @@ getPasswordHash = do
 	entry <- getSUserEntryForName username
 	return (sUserPassword entry)
 
--- Takes a password and a string and checks if
--- the password is equal to a substring of the string
--- from the tail of the string starting
-checkPasswords :: String -> String -> Maybe String
-checkPasswords pw str = checkPasswords' pw (safeInit str) (safeLast str)
+checkHash :: String -> String -> Bool
+checkHash hashPw password =
+	let result = unsafePerformIO $ crypt password hashPw in
+		(result == hashPw)
+#else
 
--- Checks if the password can be build of the pool string
--- so that only the tail of the pool string appended in the
--- front of the string to check
-checkPasswords' :: String -> String -> String -> Maybe String
-checkPasswords' pw pool str
-	| checkPassword pw str = Nothing
-	| pool == "" = Just str
-	| otherwise = checkPasswords' pw (safeInit pool) (safeLast pool ++ str)
+checkPAM :: String -> String -> Bool
+checkPAM username password =
+	let result = unsafePerformIO $ authenticate "login" username password in
+		case result of
+			Left _  -> False
+			Right _ -> True
+#endif
 
-checkSinglePassword :: String -> String -> Maybe String
-checkSinglePassword pw input
-	| checkPassword pw input = Nothing
-	| otherwise = Just ""
 
-checkPassword :: String -> String -> Bool
-checkPassword pw str
-	| encrypt == pw = True
-	| otherwise = False
-		where encrypt = unsafePerformIO $ crypt str pw
+-- Takes a string and generates all substrings including the
+-- last character of the string
+generateMulPasswords :: String -> [String]
+generateMulPasswords input
+	| input == "" = []
+	| length input == 1 = [input]
+	| otherwise = generateMulPasswords (safeTail input) ++ [input]
+
+generateOnePassword :: String -> [String]
+generateOnePassword input = [input]

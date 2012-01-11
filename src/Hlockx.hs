@@ -1,3 +1,5 @@
+{-# LANGUAGE CPP #-}
+
 module Hlockx ( hlockx
               ) where
 
@@ -16,12 +18,22 @@ import Graphics.X11.Xlib.Extras
 
 import System.Environment
 
+#ifdef USE_PAM
+import System.Posix.User
+#endif
+
 
 hlockx :: Bool -> CUInt -> IO ()
 hlockx slock timeout = do
 	progName <- getProgName
 
-	pw <- getPasswordHash
+#ifndef USE_PAM
+	token <- getPasswordHash
+	let check = checkHash
+#else
+	token <- getLoginName
+	let check = checkPAM
+#endif
 
 	dpy <- openDisplay ""
 	let scrNr = defaultScreen dpy
@@ -41,9 +53,9 @@ hlockx slock timeout = do
 
 
 	if slock then
-		eventLoop dpy win pw processInputSLock
+		eventLoop dpy win (auther token generateOnePassword check) processInputSLock
 	 else
-		eventLoop dpy win pw processInputLockX
+		eventLoop dpy win (auther token generateMulPasswords check) processInputLockX
 
 	-- restore previous DPMS settings
 	_ <- dPMSSetTimeouts dpy standby suspend off
@@ -55,40 +67,41 @@ hlockx slock timeout = do
 	cleanup dpy win
 
 -- check after every character input
-processInputLockX :: String -> String -> Maybe KeySym -> String -> Maybe String
-processInputLockX _ input Nothing _ = Just input
-processInputLockX pw input (Just ksym) str
-	| ksym `elem` [xK_Return, xK_KP_Enter, xK_Escape] = Just ""
-	| ksym == xK_BackSpace = Just $ safeInit input
-	| xK_KP_0 <= ksym || ksym <= xK_KP_9 = checkPasswords pw $ input ++ str
+processInputLockX :: String -> (Maybe KeySym, String) -> (String, Maybe String)
+processInputLockX input (Nothing, _) = (input, Nothing)
+processInputLockX input ((Just ksym), str)
+	| ksym `elem` [xK_Return, xK_KP_Enter, xK_Escape] = ("", Nothing)
+	| ksym == xK_BackSpace = (safeInit input, Nothing)
+	| xK_KP_0 <= ksym || ksym <= xK_KP_9 = let a = input ++ str in
+		(a, Just a)
 	| or $ mapf [isFunctionKey, isKeypadKey, isMiscFunctionKey, isPFKey,
-	  isPrivateKeypadKey] ksym = Just input
-	| safeNotControl str = checkPasswords pw $ input ++ str
-	| otherwise = Just input
+	  isPrivateKeypadKey] ksym = (input, Nothing)
+	| safeNotControl str = let a = input ++ str in
+		(a, Just a)
+	| otherwise = (input, Nothing)
 
 -- check after pressing enter
-processInputSLock :: String -> String -> Maybe KeySym -> String -> Maybe String
-processInputSLock _ input Nothing _ = Just input
-processInputSLock pw input (Just ksym) str
-	| ksym == xK_Escape = Just ""
-	| ksym `elem` [xK_Return, xK_KP_Enter] = checkSinglePassword pw input
-	| ksym == xK_BackSpace = Just $ safeInit input
-	| xK_KP_0 <= ksym || ksym <= xK_KP_9 = Just $ input ++ str
+processInputSLock :: String -> (Maybe KeySym, String) -> (String, Maybe String)
+processInputSLock input (Nothing, _) = (input, Nothing)
+processInputSLock input ((Just ksym), str)
+	| ksym == xK_Escape = ("", Nothing)
+	| ksym `elem` [xK_Return, xK_KP_Enter] = ("", Just input)
+	| ksym == xK_BackSpace = (safeInit input, Nothing)
+	| xK_KP_0 <= ksym || ksym <= xK_KP_9 = (input ++ str, Nothing)
 	| or $ mapf [isFunctionKey, isKeypadKey, isMiscFunctionKey, isPFKey,
-	  isPrivateKeypadKey] ksym = Just input
-	| safeNotControl str = Just $ input ++ str
-	| otherwise = Just input
+	  isPrivateKeypadKey] ksym = (input, Nothing)
+	| safeNotControl str = (input ++ str, Nothing)
+	| otherwise = (input, Nothing)
 
-eventLoop :: Display -> Window -> String -> (String -> String -> Maybe KeySym -> String -> Maybe String) -> IO ()
-eventLoop dpy win pw process =
-	allocaXEvent $ \e -> eventLoop' dpy win pw process e ""
+eventLoop :: Display -> Window -> (Maybe String -> Bool) -> (String -> (Maybe KeySym, String) -> (String, Maybe String)) -> IO ()
+eventLoop dpy win auth process =
+	allocaXEvent $ \e -> eventLoop' dpy win auth process e ""
 
-eventLoop' :: Display -> Window -> String -> (String -> String -> Maybe KeySym -> String -> Maybe String) -> XEventPtr -> String -> IO ()
-eventLoop' dpy win pw process e inp = do
-	let input = limitInput inp
+eventLoop' :: Display -> Window -> (Maybe String -> Bool) -> (String -> (Maybe KeySym, String) -> (String, Maybe String)) -> XEventPtr -> String -> IO ()
+eventLoop' dpy win auth process e input' = do
 	nextEvent dpy e
 	et <- get_EventType e
-	selectAction et input
+	selectAction et input'
 	where
 	selectAction et input
 		| et == visibilityNotify = do
@@ -96,11 +109,11 @@ eventLoop' dpy win pw process e inp = do
 			when (vis /= visibilityUnobscured) $ do
 				_ <- mapRaised dpy win
 				return ()
-			eventLoop' dpy win pw process e input
+			eventLoop' dpy win auth process e input
 		| et == keyPress = do
 			(ksym, str) <- lookupString $ asKeyEvent e
-			case process pw input ksym str of
-				Just a -> eventLoop' dpy win pw process e a
-				Nothing -> return ()
-		| otherwise = eventLoop' dpy win pw process e input
-
+			let (a, check) = process input (ksym, str) in
+				if auth check
+					then return ()
+					else eventLoop' dpy win auth process e $ limitInput a
+		| otherwise = eventLoop' dpy win auth process e input

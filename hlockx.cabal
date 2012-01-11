@@ -29,6 +29,11 @@ flag def_slock
   description: behaviour like slock by default.
   default: False
 
+flag use_pam
+  description: use PAM for authentication. As PAM is slow, it shouldn't be used
+               without def_slock
+  default: False
+
 executable hlockx
     hs-source-dirs:     src
     main-is:            Main.hs
@@ -42,6 +47,10 @@ executable hlockx
 
     if flag(def_slock)
        cpp-options: -DDEF_SLOCK
+
+    if flag(use_pam)
+       cpp-options: -DUSE_PAM
+       build-depends: pam
 
     build-depends:
       base,

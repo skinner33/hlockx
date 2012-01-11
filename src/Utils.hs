@@ -4,6 +4,7 @@ module Utils ( limitInput
              , safeInit
              , safeNotControl
              , safeLast
+             , safeTail
              ) where
 
 import Data.Char (isControl)
@@ -29,3 +30,7 @@ safeNotControl (x:_) = not $ isControl x
 safeLast :: String -> String
 safeLast "" = ""
 safeLast str = [last str]
+
+safeTail :: String -> String
+safeTail "" = ""
+safeTail str = tail str
