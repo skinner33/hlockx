@@ -59,7 +59,7 @@ checkPAM username password =
 -- last character of the string
 generateMulPasswords :: String -> [String]
 generateMulPasswords input
-	| input == "" = []
+	| input == "" = [""]
 	| length input == 1 = [input]
 	| otherwise = generateMulPasswords (safeTail input) ++ [input]
 
