@@ -37,7 +37,9 @@ flag use_pam
 executable hlockx
     hs-source-dirs:     src
     main-is:            Main.hs
-    other-modules:      DPMS Hlockx PwUtils Utils XUtils
+    other-modules:      DPMS Hlockx PwUtils Utils XUtils Lib.Crypt Lib.Shadow
+
+    extra-libraries:    crypt
 
     ghc-prof-options:   -prof -auto-all
 
@@ -55,5 +57,4 @@ executable hlockx
     build-depends:
       base,
       unix,
-      Unixutils >= 1.29,
       X11 == 1.5.*

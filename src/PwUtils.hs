@@ -21,8 +21,8 @@ import System.Posix.PAM
 
 import System.Posix.User
 
-import System.Unix.Crypt
-import System.Unix.Shadow
+import Lib.Crypt
+import Lib.Shadow
 #endif
 
 
