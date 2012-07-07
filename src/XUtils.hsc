@@ -45,15 +45,18 @@ grabInputs dpy root win progName = do
 	tryGrab progName "keyboard" dpy win (grabKeyboard dpy root True
 	    grabModeAsync grabModeAsync currentTime)
 
-makeWin :: Display -> ScreenNumber -> Window -> IO Window
-makeWin dpy scrNr rw = do
+(?) :: Bool -> (t, t) -> t
+a ? (b, c) = if a then b else c
+
+makeWin :: Display -> ScreenNumber -> Window -> Bool -> IO Window
+makeWin dpy scrNr rw kiosk = do
 	let scr = screenOfDisplay dpy scrNr
 	    bp = blackPixel dpy scrNr
 	    visual   = defaultVisualOfScreen scr
 	    depth    = defaultDepthOfScreen scr
 	    attrmask = cWOverrideRedirect .|.  cWBackPixel
-	    w = fromIntegral $ displayWidth dpy scrNr
-	    h = fromIntegral $ displayHeight dpy scrNr
+	    w = kiosk ? (1, fromIntegral $ displayWidth dpy scrNr)
+	    h = kiosk ? (1, fromIntegral $ displayHeight dpy scrNr)
 	allocaSetWindowAttributes $
 		\attributes -> do
 			set_override_redirect attributes True

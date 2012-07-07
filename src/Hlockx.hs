@@ -23,8 +23,8 @@ import System.Posix.User
 #endif
 
 
-hlockx :: Bool -> CUInt -> IO ()
-hlockx slock timeout = do
+hlockx :: Bool -> CUInt -> Bool -> IO ()
+hlockx slock timeout kiosk = do
 	progName <- getProgName
 
 #ifndef USE_PAM
@@ -38,7 +38,7 @@ hlockx slock timeout = do
 	dpy <- openDisplay ""
 	let scrNr = defaultScreen dpy
 	root <- rootWindow dpy scrNr
-	win <- makeWin dpy scrNr root
+	win <- makeWin dpy scrNr root kiosk
 	selectInput dpy win visibilityChangeMask
 	createCursor dpy scrNr win
 	grabInputs dpy root win progName
@@ -47,9 +47,13 @@ hlockx slock timeout = do
 
 	-- check if DPMS was enabled before enabling it
 	(standby, suspend, off, wasEnabled) <- getCurrentDPMSStatus dpy
-	_ <- dPMSEnable dpy
-	_ <- dPMSSetTimeouts dpy 0 0 timeout
-	_ <- dPMSForceLevel dpy dPMSModeOff
+
+	_ <- if kiosk
+		then dPMSDisable dpy
+		else do
+			_ <- dPMSEnable dpy
+			_ <- dPMSSetTimeouts dpy 0 0 timeout
+			dPMSForceLevel dpy dPMSModeOff
 
 
 	if slock then
