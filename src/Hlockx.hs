@@ -73,7 +73,7 @@ hlockx slock timeout kiosk = do
 -- check after every character input
 processInputLockX :: String -> (Maybe KeySym, String) -> (String, Maybe String)
 processInputLockX input (Nothing, _) = (input, Nothing)
-processInputLockX input ((Just ksym), str)
+processInputLockX input (Just ksym, str)
 	| ksym `elem` [xK_Return, xK_KP_Enter, xK_Escape] = ("", Nothing)
 	| ksym == xK_BackSpace = (safeInit input, Nothing)
 	| xK_KP_0 <= ksym || ksym <= xK_KP_9 = let a = input ++ str in
@@ -87,7 +87,7 @@ processInputLockX input ((Just ksym), str)
 -- check after pressing enter
 processInputSLock :: String -> (Maybe KeySym, String) -> (String, Maybe String)
 processInputSLock input (Nothing, _) = (input, Nothing)
-processInputSLock input ((Just ksym), str)
+processInputSLock input (Just ksym, str)
 	| ksym == xK_Escape = ("", Nothing)
 	| ksym `elem` [xK_Return, xK_KP_Enter] = ("", Just input)
 	| ksym == xK_BackSpace = (safeInit input, Nothing)
@@ -117,7 +117,6 @@ eventLoop' dpy win auth process e input' = do
 		| et == keyPress = do
 			(ksym, str) <- lookupString $ asKeyEvent e
 			let (a, check) = process input (ksym, str) in
-				if auth check
-					then return ()
-					else eventLoop' dpy win auth process e $ limitInput a
+				(unless (auth check) $
+					eventLoop' dpy win auth process e $ limitInput a)
 		| otherwise = eventLoop' dpy win auth process e input

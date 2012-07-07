@@ -7,7 +7,7 @@ module Utils ( limitInput
              , safeTail
              ) where
 
-import Data.Char (isControl)
+import Data.Char (isPrint)
 
 -- limit length of input
 limitInput :: String -> String
@@ -25,7 +25,7 @@ safeInit str = init str
 
 safeNotControl :: String -> Bool
 safeNotControl "" = False
-safeNotControl (x:_) = not $ isControl x
+safeNotControl (x:_) = isPrint x
 
 safeLast :: String -> String
 safeLast "" = ""

@@ -36,14 +36,14 @@ options =
             (\_ -> do
                 prg <- getProgName
                 hPutStrLn stderr (prg ++ " version " ++ showVersion version)
-                exitWith ExitSuccess))
+                exitSuccess))
         "Print version"
     , Option "h" ["help"]
         (NoArg
             (\_ -> do
                 prg <- getProgName
                 hPutStrLn stderr (usageInfo prg options)
-                exitWith ExitSuccess))
+                exitSuccess))
         "Show help"
     , Option "t" ["timeout"]
         (ReqArg
