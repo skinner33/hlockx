@@ -57,4 +57,4 @@ executable hlockx
     build-depends:
       base,
       unix,
-      X11 == 1.5.*
+      X11 == 1.6.*
