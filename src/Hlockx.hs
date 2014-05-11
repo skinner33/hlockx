@@ -31,7 +31,9 @@ hlockx slock timeout kiosk = do
 	token <- getPasswordHash
 	let check = checkHash
 #else
-	token <- getLoginName
+	uid <- getRealUserID
+	userEntry <- getUserEntryForID uid
+	let token = userName userEntry
 	let check = checkPAM
 #endif
 

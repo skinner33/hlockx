@@ -36,8 +36,9 @@ auther token generator checker (Just password) =
 
 getPasswordHash :: IO String
 getPasswordHash = do
-	username <- getLoginName
-	entry <- getSUserEntryForName username
+	uid <- getRealUserID
+	userEntry <- getUserEntryForID uid
+	entry <- getSUserEntryForName (userName userEntry)
 	return (sUserPassword entry)
 
 checkHash :: String -> String -> Bool

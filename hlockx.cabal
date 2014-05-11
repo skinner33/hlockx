@@ -1,5 +1,5 @@
 name:               hlockx
-version:            0.0.3
+version:            0.0.4
 homepage:           https://github.com/skinner33/hlockx
 bug-reports:        https://github.com/skinner33/hlockx/issues
 synopsis:           A simple X locker
